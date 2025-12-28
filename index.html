@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>RNG Gacha Game</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+body{
+  margin:0;
+  font-family:sans-serif;
+  text-align:center;
+  background:#000;
+  color:#fff;
+  transition:background 1s;
+}
+button{
+  font-size:18px;
+  padding:14px 30px;
+  margin:10px;
+}
+.big{
+  font-size:42px;
+  margin:30px;
+}
+.common{color:#aaa}
+.rare{color:#4af}
+.legend{color:#ff0}
+.mythic{
+  color:#f0f;
+  text-shadow:0 0 20px #f0f;
+}
+#effect{
+  position:fixed;
+  inset:0;
+  background:black;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  z-index:999;
+}
+</style>
+</head>
+<body>
+
+<h1>🎲 RNG GACHA 🎲</h1>
+
+<p>
+🔄 ロール数: <span id="rolls">0</span><br>
+⚔ オーラ値: <span id="power">0</span><br>
+🔮 Mythic天井: <span id="pity">0</span> / 300
+</p>
+
+<button id="rollBtn">ROLL</button>
+
+<div id="rollBox"></div>
+
+<div id="effect">
+  <div id="effectText" class="big"></div>
+  <button onclick="closeEffect()">OK</button>
+</div>
+
+<script>
+/* ===== 保存データ ===== */
+let rolls = +localStorage.getItem("rolls") || 0;
+let power = +localStorage.getItem("power") || 0;
+let pity  = +localStorage.getItem("pity")  || 0;
+let dex   = JSON.parse(localStorage.getItem("dex")||"{}");
+
+/* ===== DOM ===== */
+const rollsEl=document.getElementById("rolls");
+const powerEl=document.getElementById("power");
+const pityEl=document.getElementById("pity");
+const rollBox=document.getElementById("rollBox");
+const effect=document.getElementById("effect");
+const effectText=document.getElementById("effectText");
+const btn=document.getElementById("rollBtn");
+
+/* ===== BGM ===== */
+const bgmLegend=new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_6e8c9aef5c.mp3");
+const bgmMythic=new Audio("https://cdn.pixabay.com/audio/2022/10/30/audio_9fae3d62d5.mp3");
+
+/* ===== ガチャプール ===== */
+const pool=[
+  {name:"Dust Aura",rarity:"common",rate:40,power:1,bg:"#111"},
+  {name:"Mist Aura",rarity:"common",rate:40,power:1,bg:"#111"},
+  {name:"Crystal Aura",rarity:"rare",rate:15,power:5,bg:"#003"},
+  {name:"Storm Aura",rarity:"rare",rate:3,power:10,bg:"#014"},
+  {name:"Solar King",rarity:"legend",rate:1.8,power:50,bg:"#330"},
+  {name:"Void Emperor",rarity:"legend",rate:0.2,power:80,bg:"#200"},
+  {name:"MYTHIC : ECLIPSE",rarity:"mythic",rate:0.01,power:300,bg:"#000"},
+];
+
+/* ===== 表示保存 ===== */
+function save(){
+  localStorage.setItem("rolls",rolls);
+  localStorage.setItem("power",power);
+  localStorage.setItem("pity",pity);
+  localStorage.setItem("dex",JSON.stringify(dex));
+  rollsEl.textContent=rolls;
+  powerEl.textContent=power;
+  pityEl.textContent=pity;
+}
+save();
+
+/* ===== 抽選（天井対応） ===== */
+function rollPool(){
+  if(pity>=300){
+    return pool.find(a=>a.rarity==="mythic");
+  }
+  let r=Math.random()*100,sum=0;
+  for(const a of pool){
+    sum+=a.rate;
+    if(r<sum) return a;
+  }
+}
+
+/* ===== 演出 ===== */
+function showEffect(a,isMythic=false){
+  effect.style.display="flex";
+  effectText.className="big "+a.rarity;
+  effectText.textContent=a.name;
+  if(isMythic){
+    bgmMythic.currentTime=0;
+    bgmMythic.play();
+  }else{
+    bgmLegend.currentTime=0;
+    bgmLegend.play();
+  }
+}
+function closeEffect(){
+  effect.style.display="none";
+  bgmLegend.pause();
+  bgmMythic.pause();
+}
+
+/* ===== ロール処理 ===== */
+btn.onclick=()=>{
+  btn.disabled=true;
+  const a=rollPool();
+
+  setTimeout(()=>{
+    finish(a);
+  },1000);
+};
+
+function finish(a){
+  rolls++;
+  power+=a.power;
+  dex[a.name]=(dex[a.name]||0)+1;
+
+  if(a.rarity==="mythic") pity=0;
+  else pity++;
+
+  document.body.style.background=a.bg;
+  rollBox.innerHTML=`<div class="big ${a.rarity}">${a.name}</div>`;
+  save();
+  btn.disabled=false;
+
+  if(a.rarity==="legend") showEffect(a,false);
+  if(a.rarity==="mythic") showEffect(a,true);
+}
+</script>
+</body>
+</html>
